@@ -1,0 +1,2201 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>ASSIGNMENT 5: WHY ARE WE DOING THIS????</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      /* ===== Design tokens ===== */
+      :root {
+        --bg: #f6f7fb;
+        --card-bg: #ffffff;
+        --text: #1f2328;
+        --muted: #6b7280;
+        --border: #e6e8ef;
+        --accent: #2563eb;
+        --accent-weak: #dbe7ff;
+        --row-hover: #f3f6ff;
+        --shadow: 0 10px 25px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.04);
+        --radius: 14px;
+        --base:#93a3b8;
+        --hover:#c52a22; 
+        --stroke:#334155;
+        --muted:#94a3b8; 
+        --accent:#38bdf8; 
+        --bar:#60a5fa; 
+        --bar-hover:#f59e0b; 
+        --grid:#1f2937;
+
+        /* Venn colors */
+        --vd-a: #60a5fa; /* blue */
+        --vd-b: #f59e0b; /* amber */
+        --vd-c: #22c55e; /* green */
+
+        /* ===== Function Graph #2 (fg2-*) ===== */
+        .fg2-wrap {
+          padding: 8px;
+          border-radius: 12px;
+          background: #0b1220;
+          border: 1px solid #1f2532;
+          position: relative;
+        }
+        .fg2-controls {
+          display: flex;
+          gap: 12px;
+          flex-wrap: wrap;
+          margin: 0 0 12px;
+        }
+        .fg2-controls label {
+          font-size: 12px;
+          color: var(--muted);
+        }
+        .fg2-controls input {
+          width: 140px;
+        }
+        .fg2-svg {
+          width: 100%;
+          height: auto;
+          display: block;
+        }
+        .fg2-grid line {
+          stroke: var(--grid);
+          stroke-width: 1;
+        }
+        .fg2-axis text {
+          fill: var(--muted);
+          font-size: 12px;
+        }
+        .fg2-curve0 {
+          fill: none;
+          stroke: #f59e0b;
+          stroke-width: 3;
+        }
+        .fg2-curve1 {
+          fill: none;
+          stroke: #14b8a6;
+          stroke-width: 3;
+        }
+        .fg2-window {
+          fill: #9ca3af;
+          opacity: 0.45;
+        }
+        .fg2-cut {
+          stroke: #d1d5db;
+          stroke-dasharray: 6 6;
+          stroke-width: 2;
+        }
+        .fg2-legend {
+          display: flex;
+          gap: 16px;
+          align-items: center;
+          color: var(--muted);
+          font-size: 12px;
+          margin-top: 8px;
+        }
+        .fg2-line {
+          display: inline-block;
+          width: 24px;
+          height: 0;
+          border-top: 3px solid currentColor;
+        }
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0f1115;
+          --card-bg: #151821;
+          --text: #e7e9ee;
+          --muted: #a0a7b4;
+          --border: #262b36;
+          --accent: #60a5fa;
+          --accent-weak: #1a2745;
+          --row-hover: #1a2030;
+          --shadow: 0 8px 24px rgba(0, 0, 0, 0.35),
+            0 2px 8px rgba(0, 0, 0, 0.25);
+        }
+      }
+
+      /* ===== Page ===== */
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        font: 16px/1.55 ui-sans-serif, -apple-system, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+        background: radial-gradient(
+              1200px 600px at 10% -10%,
+              var(--accent-weak),
+              transparent
+            )
+            no-repeat,
+          radial-gradient(
+              1000px 500px at 100% 0,
+              var(--accent-weak),
+              transparent
+            )
+            no-repeat,
+          var(--bg);
+        color: var(--text);
+        padding: clamp(20px, 4vw, 48px);
+      }
+
+      .wrap {
+        max-width: 980px;
+        margin: 0 auto;
+      }
+
+      .card {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        padding: clamp(16px, 2.5vw, 28px);
+      }
+
+      /* Tooltip (map) */
+      .tip {
+        position: absolute;
+        pointer-events: none;
+        z-index: 5;
+        padding: 6px 10px;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 0.95rem;
+        background: #0b1220;
+        color: white;
+        border: 1px solid #1f2937;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+        opacity: 0;
+        transform: translate(-50%, -120%) scale(0.98);
+        transition: opacity 0.12s ease, transform 0.12s ease;
+        white-space: nowrap;
+      }
+      .tip.show {
+        opacity: 1;
+        transform: translate(-50%, -120%) scale(1);
+      }
+
+      /* Map frame */
+      .mapwrap {
+        position: relative;
+        overflow: hidden;
+        border-radius: 12px;
+        background: #0b1220;
+      }
+      .mapwrap svg {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+
+      /* Shape styling */
+      .sg-shape {
+        fill: var(--base);
+        stroke: var(--stroke);
+        stroke-width: 0.75;
+        transition: fill 0.15s ease, filter 0.15s ease;
+        cursor: pointer;
+      }
+      .sg-shape:hover {
+        fill: var(--hover);
+        filter: drop-shadow(0 0 6px rgba(197, 34, 34, 0.45));
+      }
+      .sg-shape:focus-visible {
+        outline: 2px solid #c52222;
+        outline-offset: 2px;
+      }
+
+      .hint {
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      /* ===== Bar chart styles (namespaced) ===== */
+      .bc-wrap {
+        padding: 8px;
+        border-radius: 12px;
+        background: #0b1220;
+        border: 1px solid #1f2532;
+      }
+      .bc-controls {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin: 0 0 10px;
+      }
+      .bc-btn {
+        background: #0b1220;
+        color: var(--text);
+        border: 1px solid #263244;
+        padding: 8px 10px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      .bc-btn:hover {
+        border-color: var(--accent);
+      }
+      .bc-grid line {
+        stroke: var(--grid);
+        stroke-width: 1;
+      }
+      .bc-axis text {
+        fill: var(--muted);
+        font-size: 12px;
+      }
+      .bc-bar rect {
+        fill: var(--bar);
+        rx: 6;
+        ry: 6;
+        transition: y 0.35s ease, height 0.35s ease, fill 0.15s ease,
+          opacity 0.2s ease;
+      }
+      .bc-bar:focus rect,
+      .bc-bar:hover rect {
+        fill: var(--bar-hover);
+      }
+      .bc-bar.selected rect {
+        fill: var(--accent);
+      }
+      .bc-label {
+        fill: var(--muted);
+        font-size: 12px;
+        pointer-events: none;
+      }
+      .bc-tooltip {
+        position: absolute;
+        pointer-events: none;
+        transform: translate(-50%, -115%);
+        background: #0b1220;
+        color: var(--text);
+        border: 1px solid #223047;
+        padding: 6px 8px;
+        font-size: 12px;
+        border-radius: 8px;
+        white-space: nowrap;
+        opacity: 0;
+        transition: opacity 0.15s ease, transform 0.15s ease;
+      }
+      .bc-tooltip.show {
+        opacity: 1;
+        transform: translate(-50%, -125%);
+      }
+      .bc-legend {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        color: var(--muted);
+        font-size: 12px;
+        margin-top: 8px;
+      }
+      .bc-swatch {
+        width: 10px;
+        height: 10px;
+        border-radius: 2px;
+        display: inline-block;
+      }
+      .bc-swatch.base {
+        background: var(--bar);
+      }
+      .bc-swatch.hover {
+        background: var(--bar-hover);
+      }
+
+      /* ===== Venn diagram (vd-*) ===== */
+      .vd-wrap {
+        position: relative;
+        padding: 8px;
+        border-radius: 12px;
+        background: #0b1220;
+        border: 1px solid #1f2532;
+      }
+      .vd-svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+      .vd-label {
+        fill: #e5e7eb;
+        font-size: 14px;
+        font-weight: 700;
+        text-anchor: middle;
+      }
+      .vd-count {
+        fill: #e5e7eb;
+        font-size: 12px;
+        text-anchor: middle;
+      }
+      .vd-circle {
+        stroke: #e5e7eb;
+        stroke-width: 1.25;
+        opacity: 0.38;
+        transition: opacity 0.15s ease, filter 0.15s ease;
+        cursor: pointer;
+      }
+      .vd-circle:hover {
+        opacity: 0.55;
+        filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.35));
+      }
+      .vd-dim {
+        opacity: 0.18;
+      }
+      .vd-tip {
+        position: absolute;
+        pointer-events: none;
+        transform: translate(-50%, -120%);
+        background: #0b1220;
+        color: var(--text);
+        border: 1px solid #223047;
+        padding: 6px 8px;
+        font-size: 12px;
+        border-radius: 8px;
+        white-space: nowrap;
+        opacity: 0;
+        transition: opacity 0.12s ease, transform 0.12s ease;
+      }
+      .vd-tip.show {
+        opacity: 1;
+        transform: translate(-50%, -130%);
+      }
+      .vd-legend {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .vd-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border: 1px solid #223047;
+        padding: 6px 10px;
+        border-radius: 999px;
+        cursor: pointer;
+        background: #ffffff;
+      }
+      .vd-swatch {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+      }
+      .vd-swatch.a {
+        background: var(--vd-a);
+      }
+      .vd-swatch.b {
+        background: var(--vd-b);
+      }
+      .vd-swatch.c {
+        background: var(--vd-c);
+      }
+      .vd-list {
+        margin-top: 10px;
+        max-height: 160px;
+        overflow: auto;
+        border-top: 1px solid #1f2532;
+        padding-top: 8px;
+        font-size: 13px;
+        color: #d1d5db;
+      }
+      .vd-list .empty {
+        color: var(--muted);
+      }
+
+      /* ===== Frequency Area (fa-*) ===== */
+      .fa-wrap {
+        padding: 8px;
+        border-radius: 12px;
+        background: #0b1220;
+        border: 1px solid #1f2532;
+        position: relative;
+      }
+      .fa-controls {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin: 0 0 10px;
+      }
+      .fa-controls label {
+        font-size: 12px;
+        color: var(--muted);
+        display: inline-flex;
+        gap: 6px;
+        align-items: center;
+      }
+      .fa-svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+      .fa-grid line {
+        stroke: var(--grid);
+        stroke-width: 1;
+      }
+      .fa-axis text {
+        fill: var(--muted);
+        font-size: 12px;
+      }
+      .fa-area {
+        fill-opacity: 0.55;
+        stroke-width: 0;
+      }
+      .fa-legend {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .fa-chip {
+        display: inline-flex;
+        gap: 8px;
+        align-items: center;
+        border: 1px solid #223047;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: #ffffff;
+        cursor: pointer;
+        user-select: none;
+      }
+      .fa-chip.off {
+        opacity: 0.35;
+      }
+      .fa-swatch {
+        width: 12px;
+        height: 12px;
+        border-radius: 2px;
+        display: inline-block;
+      }
+      .fa-tip {
+        position: absolute;
+        pointer-events: none;
+        transform: translate(-50%, -120%);
+        background: #0b1220;
+        color: var(--text);
+        border: 1px solid #223047;
+        padding: 6px 8px;
+        font-size: 12px;
+        border-radius: 8px;
+        white-space: nowrap;
+        opacity: 0;
+        transition: opacity 0.12s ease, transform 0.12s ease;
+      }
+      .fa-tip.show {
+        opacity: 1;
+        transform: translate(-50%, -130%);
+      }
+      .fa-xline {
+        stroke: #e5e7eb;
+        stroke-dasharray: 6 6;
+        stroke-width: 1.5;
+      }
+
+      /* Smooth scroll transition between charts */
+      html {
+        scroll-behavior: smooth;
+      }
+
+      /* Style for jump link */
+      .jump-next {
+        display: block;
+        text-align: center;
+        margin: 12px 0 24px;
+        color: var(--accent);
+        font-size: 14px;
+        text-decoration: none;
+        transition: opacity 0.3s ease;
+      }
+      .jump-next:hover {
+        opacity: 0.7;
+      }
+
+      /* ===== Header ===== */
+      h2 {
+        margin: 0 0 0.25rem;
+        font-size: clamp(1.25rem, 2.2vw, 1.6rem);
+        letter-spacing: 0.2px;
+      }
+      #timestring {
+        margin: 0 0 0.75rem;
+        color: var(--muted);
+        font-weight: 500;
+      }
+
+      .legend {
+        display: inline-flex;
+        gap: 0.5rem;
+        align-items: center;
+        padding: 0.5rem 0.75rem;
+        background: color-mix(in lab, var(--accent), transparent 88%);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+      }
+      .legend::before {
+        content: "";
+        width: 0.6rem;
+        height: 0.6rem;
+        border-radius: 50%;
+        background: var(--accent);
+        box-shadow: 0 0 0 4px color-mix(in lab, var(--accent), transparent 85%);
+      }
+
+      /* ===== Table ===== */
+      .table-wrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        border-radius: calc(var(--radius) - 4px);
+        border: 1px solid var(--border);
+        background: linear-gradient(var(--card-bg), var(--card-bg)) padding-box,
+          linear-gradient(to right, transparent, transparent) border-box;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: separate; /* keep cell radius clean */
+        border-spacing: 0;
+        min-width: 560px; /* keeps columns readable on tiny screens */
+      }
+
+      th,
+      td {
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--border);
+        text-align: center;
+        white-space: nowrap;
+      }
+      th:first-child,
+      td:first-child {
+        text-align: left;
+      }
+
+      thead th {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        background: linear-gradient(
+          180deg,
+          color-mix(in lab, var(--card-bg), white 4%),
+          var(--card-bg)
+        );
+        font-weight: 700;
+        border-bottom: 1px solid var(--border);
+      }
+
+      tbody tr:nth-child(odd) td {
+        background: color-mix(in lab, var(--card-bg), black 2.5%);
+      }
+
+      tbody tr:hover td {
+        background: var(--row-hover);
+      }
+
+      /* Rounded corners for outer cells */
+      thead th:first-child {
+        border-top-left-radius: calc(var(--radius) - 6px);
+      }
+      thead th:last-child {
+        border-top-right-radius: calc(var(--radius) - 6px);
+      }
+      tbody tr:last-child td:first-child {
+        border-bottom-left-radius: calc(var(--radius) - 6px);
+      }
+      tbody tr:last-child td:last-child {
+        border-bottom-right-radius: calc(var(--radius) - 6px);
+      }
+
+      /* Metric badge in first column */
+      td.metric {
+        font-weight: 600;
+      }
+      td.metric .badge {
+        display: inline-block;
+        padding: 0.3rem 0.6rem;
+        border-radius: 8px;
+        background: color-mix(in lab, var(--accent), transparent 88%);
+        border: 1px solid color-mix(in lab, var(--accent), transparent 70%);
+        color: var(--text);
+        font-size: 0.92rem;
+      }
+
+      /* Small screens: slightly tighter table */
+      @media (max-width: 520px) {
+        th,
+        td {
+          padding: 10px 12px;
+          font-size: 0.95rem;
+        }
+      }
+
+      /* Optional: subtle value emphasis */
+      td[data-value] {
+        font-variant-numeric: tabular-nums;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="first-assignment">
+      <div class="wrap">
+        <div class="card">
+          <h2>Assignment 1: Singapore PSI Table</h2>
+          <div class="legend">Realtime from data.gov.sg</div>
+          <h4 id="timestring"></h4>
+
+          <div class="table-wrap">
+            <table id="PSItable" aria-describedby="timestring">
+              <thead>
+                <tr>
+                  <th>Metric</th>
+                  <th>Central</th>
+                  <th>West</th>
+                  <th>East</th>
+                  <th>North</th>
+                  <th>South</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="second-assignment">
+    <div class="wrap">  
+        <div class="container">
+        <h1>Assignment 2: SVG Transformations</h1>
+
+        <table id="svgTable">
+          <thead>
+            <tr>
+              <th>Original</th>
+              <th>Left-Right Mirrored</th>
+              <th>Rotated 180°</th>
+              <th>Vertically Squeezed 50%</th>
+              <th>Grayscale</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <!-- SVG rows will be inserted here -->
+          </tbody>
+        </table>
+        </div>
+    </div>
+    </div>
+    <div id="third-assignment">
+        <div class="wrap">
+            <h1>Assignment 3: Interactive SVG Map and Charts</h1>
+            <!-- ===== Card 1: Your Map (unchanged) ===== -->
+            <div class="card" id="card-map" tabindex="-1" aria-label="Interactive map of Singapore">
+                <h1>Interactive map</h1>
+                <div class="mapwrap" id="mapWrap">
+                <div id="tooltip" class="tip" role="tooltip" aria-hidden="true">Singapore</div>
+
+                <!-- Inline SVG map (paths truncated here for brevity) -->
+                <svg id="sg-map" xmlns="http://www.w3.org/2000/svg" width="800.49158" height="496.70999" aria-labelledby="mapTitle" role="img">
+                    <title id="mapTitle">Central Singapore</title>
+
+                    <!-- Add class="sg-shape" to all paths to make the whole country one interactive target -->
+                    <path class="sg-shape" id="SG-01" title="Singapore" d="m 431.09042,77.54 1.18,0.42 1.92,0.51 1.44,1.59 1.85,1.34 1.09,1.59 0.75,1.37 0.09,1.28 0.99,1.55 2.04,2.04 1.27,1.2 1.42,0.7 1.26,0.99 1.68,0.52 0.92,0.08 0.33,0.75 0.92,0.42 1.13,0.09 0.67,-1.26 1.43,-1.34 1.01,0 2.01,0.08 1.34,0.33 2.27,1.51 1.59,1.01 1.62,0.55 1.58,0.47 1.91,0.47 2.79,0.03 1.96,0.44 1.26,0.09 1.11,0.62 0.88,0.79 1.03,0.91 1.06,0.65 1.58,1.34 -0.3,0.29 -1.6,2.44 -3.55,5.42 -2.9,2.15 -3.09,1.5 -2.53,1.69 -1.5,1.78 -0.37,4.87 -0.66,1.12 -0.66,1.59 -0.4,1.84 -0.17,0.78 -2.43,3.84 -2.53,1.03 -2.43,1.22 -0.09,6.18 -1.31,1.78 -1.59,0.84 -0.13,1.68 -1.74,2.93 -1.9,3.42 -0.95,3.61 -0.95,4.18 -1.33,5.13 -1.71,4.36 -1.84,3.15 -3.48,-0.21 -4.58,-0.86 -3.29,-0.57 -3.58,-0.29 -3.29,1.57 -2.57,4.14 -1.72,4.44 -1.57,6.15 -2.57,4.57 -2.72,4.44 -0.14,5.87 2.15,2.28 2,4.29 1,3.86 0.14,3.01 -1.86,1.86 -5.15,0.29 -3.29,1.42 0,3.72 4.15,0.14 5.15,0.86 3.72,0.86 0.72,2.86 0.14,4.44 1.86,4.57 2.28,3.86 1.72,0.86 4.58,1.43 3.29,1.43 2.57,3.86 4.29,3 0.57,4.87 1.71,2.58 -0.38,1.35 -0.48,1.66 -2.43,1 -1.43,0.86 -1.29,2.29 -3.72,3 -1,3.43 0.43,1.43 1,1.72 0.71,1.57 0.71,2.72 -0.5,1.08 0.09,0.75 0.14,1.55 -0.2,1.09 -0.54,1.56 -0.75,1.43 -1.5,1.38 -1.78,1.39 -1.06,0.62 -0.77,0.46 -0.14,0.59 -0.71,1.59 -1.18,0.64 -1.7,1.87 -1.64,1.58 -0.33,2 -0.39,3.26 0.36,3.02 0.48,2.17 0.83,2.68 -0.07,1.77 -0.07,2.24 -2.24,0.61 -1.63,-0.05 -2.38,-0.07 -2.58,-0.14 -2.04,-0.34 -1.97,0.14 -3.6,-0.27 -0.95,3.4 -0.49,1.07 -0.33,2.4 -0.2,1.49 0.26,3.35 0.65,0.59 1.26,3.18 2.04,0.2 1.14,-2.67 1.72,-2.57 1.28,-2.43 0.88,-1.43 0.34,-1.83 1.49,-0.07 1.97,0.14 1.43,0.54 1.29,0.75 2.06,0.58 3.26,1.45 3.38,2.17 2.54,2.29 2.42,2.78 1.21,1.69 -0.24,1.93 -17,13.37 -1.9,0 -1.51,-0.47 -2.38,-0.72 -2.62,-0.95 -0.76,-0.64 -0.68,-0.27 0.07,-0.95 0.61,-0.41 0,-1.02 -0.88,-0.54 -1.54,0.14 -0.3,-0.19 -1.35,-0.72 -1.43,-0.4 -1.43,-0.64 -2.53,2.03 0.19,0.99 0.03,15.49 -1.09,0.88 0.2,1.29 1.84,1.93 -0.56,0.4 -0.87,-0.79 -1.43,-1.67 -1.67,-1.75 -1.58,-1.58 -1.83,-2.06 -1.91,-1.75 -1.11,0.08 -0.63,0.56 -0.59,1.3 -1.08,0.99 1.43,1.63 1.15,1.43 0.95,1.22 0.14,1.02 -0.68,0 -2.83,-3.23 -1.51,-1.18 -1.43,-0.95 -0.82,-1.29 -1.02,-1.02 -0.88,-0.68 -1.07,-1.17 -3.89,-0.25 -9.5,-0.12 -0.67,0.49 -1.75,0.96 -2.06,1.19 -3.73,2.3 -1.68,1.17 -1.48,0.24 -1.76,1.05 -8.09,0 -0.24,-1.19 -0.88,-0.08 -0.63,-0.47 -1.44,-0.13 -0.29,0.63 -0.57,-0.12 -0.03,-0.57 1.17,-0.86 -2.12,-1.4 -0.43,1.23 -1.15,1.69 -1.01,-0.39 -1.19,-1.11 -0.95,-0.95 0.41,-0.7 1.26,-1.4 -1.09,-0.73 -0.78,-0.07 -1.7,-0.83 -2.47,-2.09 -1.71,-3.23 -0.95,-3.04 0.76,-3.04 2.28,-3.23 1.9,-1.9 3.04,-2.66 -0.38,-3.42 -1.52,-2.28 -4.56,0.19 -3.99,-0.19 -2.85,-1.14 -4.18,-0.19 -2.28,1.52 -4.18,-1.33 -4.18,-3.6 -1.71,-3.23 -0.76,-5.5 -0.76,-4.94 -0.76,-3.42 -1.33,-3.42 -2.66,-1.9 -1.52,-3.99 1.33,-3.04 1.9,-3.42 0.57,-3.41 2.3,1.78 1.95,1.71 1.47,1.47 1.71,-0.24 0.73,-3.42 0.49,-1.95 0.73,-2.69 0,-2.69 -0.24,-2.69 0.73,-2.69 2.44,-3.91 2.69,-3.91 2.2,-2.44 1.71,-2.2 2.2,-0.49 3.18,-1.22 2.44,-3.18 0,-2.93 1.22,-3.91 -0.49,-3.67 1.22,-2.44 2.2,-1.47 1.71,-2.2 -0.49,-3.18 -2.44,-0.49 -2.93,0 -3.18,-1.95 -3.91,-4.15 -3.91,-3.42 -2.44,-2.69 -3.91,-2.69 -0.98,-4.15 1.47,-4.4 2.93,-3.67 2.93,-1.71 2.44,-3.42 1.22,-4.15 5.13,-4.4 3.91,-2.93 3.18,-2.44 1.96,-4.64 1.95,-5.86 2.81,-4.53 1.45,-5.8 z"/>
+                    <path class="sg-shape" id="SG-02" title="Singapore" d="m 532.93042,110.3 1.26,1.05 ... z"/>
+                    <path class="sg-shape" id="SG-03" title="Singapore" d="m 411.83042,35.48 0.98,0 ... z"/>
+                    <path class="sg-shape" id="SG-04" title="Singapore" d="m 633.52042,131.77 2.21,0.72 ... z"/>
+                    <path class="sg-shape" id="SG-05" title="Singapore" d="m 186.24042,484.79 0,0.79 ... z"/>
+                    <!-- (Use your full paths here) -->
+                </svg>
+                </div>
+                <div class="hint">Notes: central singapore map to be highlighted when hover</div>
+            </div>
+            
+            <!-- ===== Card 2: Interactive SVG Bar Chart ===== -->
+            <div class="card" id="card-bar" tabindex="-1" aria-label="Interactive bar chart">
+                <h2>Interactive Bar Chart (Jan to Dec)</h2>
+                <div class="bc-controls">
+                <button class="bc-btn" id="bcSortAsc" aria-label="Sort ascending">Sort ↑</button>
+                <button class="bc-btn" id="bcSortDesc" aria-label="Sort descending">Sort ↓</button>
+                <button class="bc-btn" id="bcShuffle" aria-label="Shuffle data">Shuffle</button>
+                <button class="bc-btn" id="bcReset" aria-label="Reset data">Reset</button>
+                </div>
+                <div class="bc-wrap" id="bcWrap">
+                <div id="bcTip" class="bc-tooltip" role="status" aria-live="polite"></div>
+                <svg id="bcChart" viewBox="0 0 960 420" role="img" aria-labelledby="bcTitle bcDesc">
+                    <title id="bcTitle">Sample Data</title>
+                    <desc id="bcDesc">Bar chart with keyboard and mouse interactivity. Use Tab to focus, Enter to select, and arrow keys to move.</desc>
+                    <defs><clipPath id="bcClip"><rect x="80" y="20" width="840" height="320" rx="8" ry="8"/></clipPath></defs>
+                    <g class="bc-grid"></g>
+                    <g id="bcPlot" clip-path="url(#bcClip)"></g>
+                    <g class="bc-axis bc-axis-x"></g>
+                    <g class="bc-axis bc-axis-y"></g>
+                </svg>
+                </div>
+                <div class="bc-legend">
+                <span class="bc-swatch base"></span> Default
+                <span class="bc-swatch hover"></span> Hover/Focus
+                </div>
+                <div class="hint">Notes: to sort data in ascending or descending order, shuffle the months then reset from Jan to Dec</div>
+            </div>
+
+            
+            <!-- ===== Card 3: Interactive SVG Venn Diagram ===== -->
+            <div class="card" id="card-venn" tabindex="-1" aria-label="Interactive Venn diagram">
+                <h2>Interactive Venn Diagram</h2>
+                <div class="vd-wrap" id="vdWrap">
+                <div id="vdTip" class="vd-tip" role="status" aria-live="polite"></div>
+                <svg id="vdSvg" class="vd-svg" viewBox="0 0 700 480" role="img" aria-labelledby="vdTitle vdDesc">
+                    <title id="vdTitle">Three-set Venn diagram</title>
+                    <desc id="vdDesc">Hover to see region name and count. Click to lock and list items.</desc>
+
+                    <!-- Circles (A, B, C) -->
+                    <g id="vdCircles">
+                    <circle id="vdA" class="vd-circle" cx="260" cy="240" r="140" fill="var(--vd-a)"></circle>
+                    <circle id="vdB" class="vd-circle" cx="440" cy="240" r="140" fill="var(--vd-b)"></circle>
+                    <circle id="vdC" class="vd-circle" cx="350" cy="330" r="140" fill="var(--vd-c)"></circle>
+                    </g>
+
+                    <!-- Labels on circles -->
+                    <text x="220" y="150" class="vd-label">DOGS</text>
+                    <text x="480" y="150" class="vd-label">HUMANS</text>
+                    <text x="350" y="440" class="vd-label">LIZARDS</text>
+
+                    <!-- Dynamic counts per canonical region are drawn by JS -->
+                    <g id="vdCounts"></g>
+
+                    <!-- Transparent catch layer for pointer detection -->
+                    <rect x="0" y="0" width="700" height="480" fill="transparent" id="vdHit" />
+                </svg>
+                </div>
+
+                <div class="vd-legend" id="vdLegend" aria-label="Quick filters">
+                <button class="vd-chip" data-region="DOGS"><span class="vd-swatch a"></span> DOGS only</button>
+                <button class="vd-chip" data-region="HUMANS"><span class="vd-swatch b"></span> HUMANS only</button>
+                <button class="vd-chip" data-region="LIZARDS"><span class="vd-swatch c"></span> LIZARDS only</button>
+                <button class="vd-chip" data-region="DOGS and HUMANS">DOGS and HUMANS</button>
+                <button class="vd-chip" data-region="DOGS and LIZARDS">DOGS and LIZARDS</button>
+                <button class="vd-chip" data-region="HUMANS and LIZARDS">HUMANS and LIZARDS</button>
+                <button class="vd-chip" data-region="DOGS and HUMANS and LIZARDS">DOGS and HUMAN and LIZARDS</button>
+                <button class="vd-chip" data-region="ALL">Show all</button>
+                </div>
+
+                <div id="vdList" class="vd-list"><div class="empty">Click a region to list its items.</div></div>
+                <div class="hint">Notes: 3 set venn diagram, edited the different characteristics between humans, dogs and lizards</div>
+            </div>
+
+            <!-- ===== Card 4: Windowed Function Graph (like the picture) ===== -->
+            <div class="card" id="card-fg1" tabindex="-1" aria-label="Windowed function graph">
+                <h2>SVG Function Graph (Windowed Overlap)</h2>
+                <div class="fg2-controls">
+                <label>Yellow hori<input id="fg2Mu0" type="range" min="-1.5" max="2.5" step="0.1" value="0.2"></label>
+                <label>Yellow vert <input id="fg2S0"  type="range" min="0.3"  max="1.5" step="0.05" value="0.6"></label>
+                <label>Blue hori <input id="fg2Mu1" type="range" min="-1.5" max="4.5" step="0.1" value="2.0"></label>
+                <label>Blue vert <input id="fg2S1"  type="range" min="0.3"  max="1.5" step="0.05" value="0.7"></label>
+                <label>Overlap a <input id="fg2A"   type="range" min="-2"   max="5"   step="0.05" value="0.9"></label>
+                <label>Overlap b <input id="fg2B"   type="range" min="-2"   max="5"   step="0.05" value="1.7"></label>
+                </div>
+
+                <div class="fg2-wrap">
+                <svg id="fg2Svg" class="fg2-svg" viewBox="0 0 960 420" role="img"
+                    aria-label="Two Gaussian densities with window shading">
+                    <defs><clipPath id="fg2Clip"><rect x="70" y="20" width="860" height="320" rx="8" ry="8"/></clipPath></defs>
+                    <g class="fg2-grid"></g>
+                    <g id="fg2Window" clip-path="url(#fg2Clip)"></g>
+                    <path id="fg2C0" class="fg2-curve0" d=""></path>
+                    <path id="fg2C1" class="fg2-curve1" d=""></path>
+                    <line id="fg2CutA" class="fg2-cut" x1="-999" y1="20" x2="-999" y2="340"></line>
+                    <line id="fg2CutB" class="fg2-cut" x1="-999" y1="20" x2="-999" y2="340"></line>
+                    <g class="fg2-axis fg2-axis-x"></g>
+                    <g class="fg2-axis fg2-axis-y"></g>
+                </svg>
+                </div>
+
+                <div class="fg2-legend">
+                <span style="color:#f59e0b"><span class="fg2-line"></span> p(x, y=0)</span>
+                <span style="color:#14b8a6"><span class="fg2-line"></span> p(x, y=1)</span>
+                <span>Shaded: min curve inside [a, b]</span>
+                </div>
+                <div class="hint">Notes: can manipulate both graphs vertically and horizontally as well as the start and end of overlapped region</div>
+            </div>
+
+            <!-- ===== Card 5: Frequency Area Chart ===== -->
+            <div class="card" id="card-freq" tabindex="-1" aria-labe l="Interactive frequency area chart">
+                <h2>Interactive SVG Frequency Chart</h2>
+
+                <div class="fa-controls">
+                <label><input id="faStacked" type="checkbox"> Stacked</label>
+                <span style="color:var(--muted);font-size:12px">Hover to inspect • Click legend to toggle series</span>
+                </div>
+
+                <div class="fa-wrap" id="faWrap">
+                <div id="faTip" class="fa-tip" aria-live="polite"></div>
+                <svg id="faSvg" class="fa-svg" viewBox="0 0 960 360" role="img" aria-label="Frequency by year">
+                    <defs><clipPath id="faClip"><rect x="70" y="20" width="860" height="260" rx="8" ry="8"/></clipPath></defs>
+                    <g class="fa-grid"></g>
+                    <g id="faAreas" clip-path="url(#faClip)"></g>
+                    <line id="faX" class="fa-xline" x1="-999" y1="20" x2="-999" y2="280"></line>
+                    <g class="fa-axis fa-axis-x"></g>
+                    <g class="fa-axis fa-axis-y"></g>
+                    <rect id="faHit" x="70" y="20" width="860" height="260" fill="transparent"></rect>
+                </svg>
+                </div>
+
+                <div id="faLegend" class="fa-legend" aria-label="Series toggles"></div>
+                <div class="hint">Notes: Asked for replication, not sure how to debug, this is my best</div>
+            </div>
+        </div>
+    </div>
+    <div id="fourth-assignment">
+        <div class="warp">
+            <div class="container"> 
+                <h1>Assignment 4: Small-Multiples Visualization</h1>
+                <h2>Small-Multiples: Robustness & Accuracy by Approach</h2>
+                <p style="max-width:950px;">
+                Each chart is one approach. Groups on the x-axis are metrics
+                (Standard Accuracy, Certified Robustness Rate, Certified Robust Accuracy),
+                and bars within each group are datasets (CIFAR-100, CIFAR-10, SVHN, MNIST).
+                Hover over each bar to see exact values.
+                </p>
+                <div class="card" style="background-color: #c5c5c5;">
+                    <div id="smalls"></div> 
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- FIRST ASSIGNMENT -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+    <script>
+      /* Your inline fallback data (kept as-is) */
+      const data = {
+        items: [
+          {
+            update_timestamp: "2025-10-06",
+            readings: {
+              psi: { west: 45, east: 42, central: 44, north: 43, south: 46 },
+            },
+          },
+        ],
+      };
+
+      // helper to render a row
+      function addRow(metric, values) {
+        const tbody = d3.select("#PSItable").select("tbody");
+        const row = tbody.append("tr");
+        row
+          .append("td")
+          .attr("class", "metric")
+          .html(`<span class="badge">${metric}</span>`);
+        ["central", "west", "east", "north", "south"].forEach((region) => {
+          row
+            .append("td")
+            .attr("data-value", values[region]) // allows CSS or tooltips later
+            .text(values[region] ?? "—");
+        });
+      }
+
+      // Try API first; fall back to inline data if it fails
+      fetch("https://api.data.gov.sg/v1/environment/psi")
+        .then((r) => r.json())
+        .then((live) => {
+          d3.select("#timestring").text(
+            live.items?.[0]?.update_timestamp ?? ""
+          );
+          const readings = live.items?.[0]?.readings ?? {};
+          Object.keys(readings).forEach((metric) =>
+            addRow(metric, readings[metric])
+          );
+        })
+        .catch(() => {
+          d3.select("#timestring").text(
+            data.items[0].update_timestamp + " (fallback)"
+          );
+          const readings = data.items[0].readings;
+          Object.keys(readings).forEach((metric) =>
+            addRow(metric, readings[metric])
+          );
+        });
+    </script>
+
+    <!-- SECOND ASSIGNMENT -->
+    <script>
+      // Array of 10 asymmetric SVG files (inline SVG data)
+      const svgs = [
+        // SVG 1: Asymmetric leaf
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M20,80 Q30,50 40,30 Q50,10 70,20 Q60,40 50,60 Q40,80 20,80 Z" fill="#FF6B6B"/><circle cx="45" cy="45" r="3" fill="#8B0000"/></svg>',
+
+        // SVG 2: Irregular shape with offset circle
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect x="15" y="25" width="50" height="60" fill="#4ECDC4"/><circle cx="70" cy="30" r="15" fill="#2C7A73"/></svg>',
+
+        // SVG 3: Right triangle with dot
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><polygon points="20,20 20,80 80,80" fill="#45B7D1"/><circle cx="35" cy="65" r="5" fill="#1E5A6E"/></svg>',
+
+        // SVG 4: Flag shape
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect x="15" y="10" width="5" height="80" fill="#333"/><path d="M20,15 L75,15 L65,35 L75,55 L20,55 Z" fill="#FFA07A"/></svg>',
+
+        // SVG 5: Asymmetric arrow pointing right-up
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><polygon points="10,70 30,50 30,60 70,20 75,25 35,65 45,65" fill="#E74C3C"/></svg>',
+
+        // SVG 6: L-shape with circle
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M20,20 L20,80 L80,80 L80,60 L40,60 L40,20 Z" fill="#9B59B6"/><circle cx="60" cy="40" r="8" fill="#5B2C7A"/></svg>',
+
+        // SVG 7: Fish shape
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><ellipse cx="55" cy="50" rx="35" ry="20" fill="#3498DB"/><polygon points="20,50 30,40 30,60" fill="#3498DB"/><circle cx="70" cy="45" r="3" fill="#fff"/></svg>',
+
+        // SVG 9: Abstract bird
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><ellipse cx="45" cy="45" rx="20" ry="25" fill="#1ABC9C"/><ellipse cx="70" cy="35" rx="15" ry="10" fill="#1ABC9C"/><polygon points="30,35 15,25 30,30" fill="#1ABC9C"/><circle cx="50" cy="40" r="2" fill="#000"/></svg>',
+
+        // SVG 10: House with chimney
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><polygon points="50,20 85,50 75,50 75,85 25,85 25,50 15,50" fill="#E67E22"/><rect x="65" y="10" width="8" height="25" fill="#A0522D"/><rect x="40" y="60" width="15" height="25" fill="#8B4513"/></svg>',
+
+        // SVG 11: Teardrop shape
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M50,15 Q70,35 70,60 Q70,80 50,85 Q30,80 30,60 Q30,35 50,15 Z" fill="#FF69B4"/><circle cx="48" cy="55" r="4" fill="#C71585"/></svg>',
+      ];
+
+      function createSVGCell(svgContent, className = "") {
+        const td = document.createElement("td");
+        const div = document.createElement("div");
+        div.className = "svg-container " + className;
+        div.innerHTML = svgContent;
+        td.appendChild(div);
+        return td;
+      }
+
+      function populateTable() {
+        const tbody = document.getElementById("tableBody");
+
+        svgs.forEach((svg, index) => {
+          const row = document.createElement("tr");
+
+          // Original
+          row.appendChild(createSVGCell(svg));
+
+          // Left-Right Mirrored
+          row.appendChild(createSVGCell(svg, "mirrored"));
+
+          // Rotated 180 degrees
+          row.appendChild(createSVGCell(svg, "rotated"));
+
+          // Vertically Squeezed 50%
+          row.appendChild(createSVGCell(svg, "squeezed"));
+
+          // Grayscale
+          row.appendChild(createSVGCell(svg, "grayscale"));
+
+          tbody.appendChild(row);
+        });
+      }
+
+      // Initialize the table when page loads
+      populateTable();
+    </script>
+
+    <!-- THIRD ASSIGNMENT -->
+    <script>
+      /* ===== Map chart (interactive) ===== */
+      (function () {
+        const tip = document.getElementById("tooltip");
+        const wrap = document.getElementById("mapWrap");
+        const targets = document.querySelectorAll("#sg-map .sg-shape");
+        function show(e) {
+          tip.textContent = "Central Singapore";
+          tip.classList.add("show");
+          tip.setAttribute("aria-hidden", "false");
+          const r = wrap.getBoundingClientRect();
+          const x = (e.clientX ?? r.left + r.width / 2) - r.left;
+          const y = (e.clientY ?? r.top + r.height / 2) - r.top;
+          tip.style.left = x + "px";
+          tip.style.top = y + "px";
+        }
+        function hide() {
+          tip.classList.remove("show");
+          tip.setAttribute("aria-hidden", "true");
+        }
+        targets.forEach((el) => {
+          el.addEventListener("mouseenter", show);
+          el.addEventListener("mousemove", show);
+          el.addEventListener("mouseleave", hide);
+          el.setAttribute("tabindex", "0");
+          el.addEventListener("focus", show);
+          el.addEventListener("blur", hide);
+          el.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              show(e);
+            }
+          });
+        });
+      })();
+
+      /* ===== Bar chart (interactive) ===== */
+      (() => {
+        // namespaced
+        const svg = document.getElementById("bcChart");
+        const plot = document.getElementById("bcPlot");
+        const grid = svg.querySelector(".bc-grid");
+        const axisX = svg.querySelector(".bc-axis-x");
+        const axisY = svg.querySelector(".bc-axis-y");
+        const tip = document.getElementById("bcTip");
+        const wrap = document.getElementById("bcWrap");
+
+        const W = 960,
+          H = 420,
+          M = { top: 20, right: 40, bottom: 56, left: 80 };
+        const innerW = W - M.left - M.right,
+          innerH = H - M.top - M.bottom;
+
+        const baseData = [
+          { label: "Jan", value: 12 },
+          { label: "Feb", value: 19 },
+          { label: "Mar", value: 7 },
+          { label: "Apr", value: 14 },
+          { label: "May", value: 23 },
+          { label: "Jun", value: 10 },
+          { label: "Jul", value: 27 },
+          { label: "Aug", value: 17 },
+          { label: "Sep", value: 9 },
+          { label: "Oct", value: 20 },
+          { label: "Nov", value: 15 },
+          { label: "Dec", value: 25 },
+        ];
+        let data = baseData.map((d) => ({ ...d })),
+          selected = -1;
+
+        const xScale = (i, n) => {
+          const pad = 0.12,
+            band = innerW / n,
+            barW = band * (1 - pad),
+            x = M.left + band * i + (band - barW) / 2;
+          return { x, barW };
+        };
+        const yScale = (v, vmax) => {
+          const t = vmax ? v / vmax : 0,
+            y = M.top + innerH * (1 - t),
+            h = innerH * t;
+          return { y, h };
+        };
+
+        function drawGridAxes() {
+          grid.innerHTML = "";
+          axisX.innerHTML = "";
+          axisY.innerHTML = "";
+          const ticks = 5,
+            vmax = Math.max(...data.map((d) => d.value)) || 1;
+          for (let i = 0; i <= ticks; i++) {
+            const v = (vmax / ticks) * i,
+              { y } = yScale(v, vmax);
+            grid.appendChild(lineEl(M.left, y, M.left + innerW, y));
+            const t = textEl(M.left - 10, y + 4, v.toFixed(0));
+            t.setAttribute("text-anchor", "end");
+            t.classList.add("bc-axis");
+            axisY.appendChild(t);
+          }
+          data.forEach((d, i) => {
+            const { x, barW } = xScale(i, data.length);
+            const t = textEl(x + barW / 2, M.top + innerH + 24, d.label);
+            t.setAttribute("text-anchor", "middle");
+            t.classList.add("bc-axis");
+            axisX.appendChild(t);
+          });
+        }
+        function drawBars() {
+          plot.innerHTML = "";
+          const vmax = Math.max(...data.map((d) => d.value)) || 1,
+            n = data.length;
+          data.forEach((d, i) => {
+            const { x, barW } = xScale(i, n);
+            const { y, h } = yScale(d.value, vmax);
+            const g = elNS("g");
+            g.classList.add("bc-bar");
+            if (i === selected) g.classList.add("selected");
+            g.setAttribute("tabindex", "0");
+            g.setAttribute("role", "button");
+            g.setAttribute("aria-label", `${d.label}: ${d.value}`);
+            const r = elNS("rect");
+            r.setAttribute("x", x);
+            r.setAttribute("y", y);
+            r.setAttribute("width", barW);
+            r.setAttribute("height", h);
+            const lab = textEl(x + barW / 2, y - 6, d.value.toString());
+            lab.setAttribute("text-anchor", "middle");
+            lab.classList.add("bc-label");
+            g.appendChild(r);
+            g.appendChild(lab);
+            plot.appendChild(g);
+
+            const show = (evt) => {
+              const b = wrap.getBoundingClientRect();
+              const cx = (evt.clientX ?? b.left + b.width / 2) - b.left;
+              const cy = (evt.clientY ?? b.top + b.height / 2) - b.top;
+              tip.textContent = `${d.label}: ${d.value}`;
+              tip.style.left = cx + "px";
+              tip.style.top = cy + "px";
+              tip.classList.add("show");
+            };
+            const hide = () => tip.classList.remove("show");
+            g.addEventListener("pointerenter", show);
+            g.addEventListener("pointermove", show);
+            g.addEventListener("pointerleave", hide);
+            g.addEventListener("focus", show);
+            g.addEventListener("blur", hide);
+            g.addEventListener("click", () => {
+              selected = selected === i ? -1 : i;
+              drawBars();
+            });
+            g.addEventListener("keydown", (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                g.click();
+              }
+              if (e.key === "ArrowRight") {
+                focus((i + 1) % n);
+              }
+              if (e.key === "ArrowLeft") {
+                focus((i - 1 + n) % n);
+              }
+            });
+          });
+        }
+        const elNS = (t) =>
+          document.createElementNS("http://www.w3.org/2000/svg", t);
+        const textEl = (x, y, txt) => {
+          const t = elNS("text");
+          t.setAttribute("x", x);
+          t.setAttribute("y", y);
+          t.textContent = txt;
+          return t;
+        };
+        const lineEl = (x1, y1, x2, y2) => {
+          const l = elNS("line");
+          l.setAttribute("x1", x1);
+          l.setAttribute("y1", y1);
+          l.setAttribute("x2", x2);
+          l.setAttribute("y2", y2);
+          return l;
+        };
+        function focus(i) {
+          const bars = plot.querySelectorAll(".bc-bar");
+          if (bars.length) bars[i].focus();
+        }
+
+        document.getElementById("bcSortAsc").addEventListener("click", () => {
+          data.sort((a, b) => a.value - b.value);
+          selected = -1;
+          drawGridAxes();
+          drawBars();
+        });
+        document.getElementById("bcSortDesc").addEventListener("click", () => {
+          data.sort((a, b) => b.value - a.value);
+          selected = -1;
+          drawGridAxes();
+          drawBars();
+        });
+        document.getElementById("bcShuffle").addEventListener("click", () => {
+          for (let i = data.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [data[i], data[j]] = [data[j], data[i]];
+          }
+          selected = -1;
+          drawGridAxes();
+          drawBars();
+        });
+        document.getElementById("bcReset").addEventListener("click", () => {
+          data = baseData.map((d) => ({ ...d }));
+          selected = -1;
+          drawGridAxes();
+          drawBars();
+        });
+
+        drawGridAxes();
+        drawBars();
+        window.addEventListener("resize", () => tip.classList.remove("show"));
+      })();
+
+      /* ===== Venn diagram (3 sets, interactive) ===== */
+      (() => {
+        // --- Data model: items with set membership ---
+        const items = [
+          { name: "Have fur all over body", A: 1, B: 0, C: 0 },
+          { name: "Mammals", A: 1, B: 1, C: 0 },
+          { name: "Be a politician", A: 0, B: 1, C: 0 },
+          { name: "Live in the same house", A: 0, B: 1, C: 1 },
+          { name: "Have 4 legs", A: 1, B: 0, C: 1 },
+          { name: "Animals", A: 1, B: 1, C: 1 },
+          { name: "Reptiles", A: 0, B: 0, C: 1 },
+          { name: "Barks", A: 1, B: 0, C: 0 },
+          { name: "Have 2 legs", A: 0, B: 1, C: 0 },
+          { name: "Have scales", A: 0, B: 0, C: 1 },
+          { name: "Eat bugs", A: 1, B: 1, C: 1 },
+          { name: "Climb walls", A: 0, B: 0, C: 1 },
+          { name: "Do math", A: 0, B: 1, C: 0 },
+        ];
+
+        const vd = {
+          svg: document.getElementById("vdSvg"),
+          wrap: document.getElementById("vdWrap"),
+          tip: document.getElementById("vdTip"),
+          counts: document.getElementById("vdCounts"),
+          list: document.getElementById("vdList"),
+          chips: Array.from(document.querySelectorAll(".vd-chip")),
+          circles: {
+            A: document.getElementById("vdA"),
+            B: document.getElementById("vdB"),
+            C: document.getElementById("vdC"),
+          },
+          geom: {
+            A: { cx: 260, cy: 240, r: 140 },
+            B: { cx: 440, cy: 240, r: 140 },
+            C: { cx: 350, cy: 330, r: 140 },
+          },
+        };
+
+        // Canonical region keys and matchers (exact region membership)
+        const regions = [
+          {
+            key: "DOGS",
+            matcher: (i) => i.A && !i.B && !i.C,
+            pos: { x: 200, y: 250 },
+          },
+          {
+            key: "HUMANS",
+            matcher: (i) => !i.A && i.B && !i.C,
+            pos: { x: 500, y: 250 },
+          },
+          {
+            key: "LIZARDS",
+            matcher: (i) => !i.A && !i.B && i.C,
+            pos: { x: 350, y: 400 },
+          },
+          {
+            key: "DOGS and HUMANS",
+            matcher: (i) => i.A && i.B && !i.C,
+            pos: { x: 350, y: 170 },
+          },
+          {
+            key: "DOGS and LIZARDS",
+            matcher: (i) => i.A && !i.B && i.C,
+            pos: { x: 300, y: 320 },
+          },
+          {
+            key: "HUMANS and LIZARDS",
+            matcher: (i) => !i.A && i.B && i.C,
+            pos: { x: 400, y: 320 },
+          },
+          {
+            key: "DOGS and HUMANS and LIZARDS",
+            matcher: (i) => i.A && i.B && i.C,
+            pos: { x: 350, y: 300 },
+          },
+        ];
+
+        // Compute counts and draw labels
+        function computeCounts() {
+          return Object.fromEntries(
+            regions.map((r) => [r.key, items.filter(r.matcher)])
+          );
+        }
+
+        function drawCounts() {
+          const counts = computeCounts();
+          vd.counts.innerHTML = "";
+          regions.forEach((r) => {
+            const t = document.createElementNS(
+              "http://www.w3.org/2000/svg",
+              "text"
+            );
+            t.setAttribute("x", r.pos.x);
+            t.setAttribute("y", r.pos.y);
+            t.classList.add("vd-count");
+            t.textContent = counts[r.key].length;
+            vd.counts.appendChild(t);
+          });
+        }
+
+        function distance(x1, y1, x2, y2) {
+          const dx = x1 - x2,
+            dy = y1 - y2;
+          return Math.hypot(dx, dy);
+        }
+        function inside(circle, x, y) {
+          return distance(x, y, circle.cx, circle.cy) <= circle.r;
+        }
+
+        // Determine region under pointer based on circle inclusion
+        function regionAtClientPoint(evt) {
+          const rect = vd.svg.getBoundingClientRect();
+          const x = (evt.clientX ?? rect.left + rect.width / 2) - rect.left;
+          const y = (evt.clientY ?? rect.top + rect.height / 2) - rect.top;
+          // map to SVG coords (viewBox is 700x480)
+          const svgX = (x / rect.width) * 700;
+          const svgY = (y / rect.height) * 480;
+
+          const A = inside(vd.geom.A, svgX, svgY);
+          const B = inside(vd.geom.B, svgX, svgY);
+          const C = inside(vd.geom.C, svgX, svgY);
+
+          let key = null;
+          if (A && !B && !C) key = "DOGS";
+          else if (!A && B && !C) key = "HUMANS";
+          else if (!A && !B && C) key = "LIZARDS";
+          else if (A && B && !C) key = "DOGS and HUMANS";
+          else if (A && !B && C) key = "DOGS and LIZARDS";
+          else if (!A && B && C) key = "HUMANS and lIZARDS";
+          else if (A && B && C) key = "DOGS and HUMANS and LIZARDS";
+          else key = null;
+
+          return { key, client: { x, y } };
+        }
+
+        function setDim(active) {
+          // Dim unrelated circles for quick visual focus
+          const dim = { A: true, B: true, C: true };
+          if (active) {
+            if (active.includes("A")) dim.A = false;
+            if (active.includes("B")) dim.B = false;
+            if (active.includes("C")) dim.C = false;
+          } else {
+            dim.A = false;
+            dim.B = false;
+            dim.C = false;
+          }
+          vd.circles.A.classList.toggle("vd-dim", dim.A);
+          vd.circles.B.classList.toggle("vd-dim", dim.B);
+          vd.circles.C.classList.toggle("vd-dim", dim.C);
+        }
+
+        function showTip(regionKey, client) {
+          if (!regionKey) {
+            vd.tip.classList.remove("show");
+            setDim(null);
+            return;
+          }
+          const counts = computeCounts();
+          vd.tip.textContent = `${regionKey}: ${counts[regionKey].length}`;
+          vd.tip.style.left = client.x + "px";
+          vd.tip.style.top = client.y + "px";
+          vd.tip.classList.add("show");
+          setDim(regionKey);
+        }
+
+        function hideTip() {
+          vd.tip.classList.remove("show");
+          setDim(null);
+        }
+
+        function listRegion(regionKey) {
+          const box = vd.list;
+          box.innerHTML = "";
+          if (!regionKey || regionKey === "ALL") {
+            const all = document.createElement("div");
+            all.textContent = items.map((i) => i.name).join(", ");
+            box.appendChild(all);
+            return;
+          }
+          const arr = computeCounts()[regionKey];
+          if (!arr.length) {
+            const em = document.createElement("div");
+            em.className = "empty";
+            em.textContent = "No items in this region.";
+            box.appendChild(em);
+            return;
+          }
+          const ul = document.createElement("ul");
+          ul.style.margin = "0";
+          ul.style.paddingLeft = "18px";
+          arr.forEach((i) => {
+            const li = document.createElement("li");
+            li.textContent = i.name;
+            ul.appendChild(li);
+          });
+          box.appendChild(ul);
+        }
+
+        // Hover / move / leave handling via the transparent hit rect
+        const hit = document.getElementById("vdHit");
+        let locked = null;
+
+        function onMove(e) {
+          if (locked) return; // do not update when locked
+          const { key, client } = regionAtClientPoint(e);
+          showTip(key, client);
+        }
+        function onLeave() {
+          if (!locked) hideTip();
+        }
+        function onClick(e) {
+          const { key, client } = regionAtClientPoint(e);
+          if (!key) {
+            locked = null;
+            hideTip();
+            listRegion(null);
+            return;
+          }
+          // toggle lock
+          if (locked === key) {
+            locked = null;
+            hideTip();
+            listRegion(null);
+          } else {
+            locked = key;
+            showTip(key, client);
+            listRegion(key);
+          }
+        }
+
+        hit.addEventListener("pointermove", onMove);
+        hit.addEventListener("pointerenter", onMove);
+        hit.addEventListener("pointerleave", onLeave);
+        hit.addEventListener("click", onClick);
+
+        // Legend chip shortcuts (keyboard/click)
+        vd.chips.forEach((ch) => {
+          ch.addEventListener("click", () => {
+            const key = ch.dataset.region;
+            if (key === "ALL") {
+              locked = null;
+              hideTip();
+              listRegion("ALL");
+              setDim(null);
+              return;
+            }
+            locked = key;
+            hideTip();
+            listRegion(key);
+            setDim(key);
+          });
+          ch.setAttribute("tabindex", "0");
+          ch.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              ch.click();
+            }
+          });
+        });
+
+        // Draw counts once and init list
+        drawCounts();
+        listRegion(null);
+      })();
+
+      /* ===== function graph (interactive) ===== */
+      (() => {
+        const svg = document.getElementById("fg2Svg");
+        const grid = svg.querySelector(".fg2-grid");
+        const axX = svg.querySelector(".fg2-axis-x");
+        const axY = svg.querySelector(".fg2-axis-y");
+        const p0 = document.getElementById("fg2C0");
+        const p1 = document.getElementById("fg2C1");
+        const winG = document.getElementById("fg2Window");
+        const cutA = document.getElementById("fg2CutA");
+        const cutB = document.getElementById("fg2CutB");
+
+        const mu0 = document.getElementById("fg2Mu0");
+        const s0 = document.getElementById("fg2S0");
+        const mu1 = document.getElementById("fg2Mu1");
+        const s1 = document.getElementById("fg2S1");
+        const aSl = document.getElementById("fg2A");
+        const bSl = document.getElementById("fg2B");
+
+        const W = 960,
+          H = 420,
+          M = { top: 20, right: 30, bottom: 56, left: 70 };
+        const IW = W - M.left - M.right,
+          IH = H - M.top - M.bottom;
+        const XMIN = -2,
+          XMAX = 5;
+        const xs = Array.from(
+          { length: 520 },
+          (_, i) => XMIN + (i / 519) * (XMAX - XMIN)
+        );
+        const x2px = (x) => M.left + ((x - XMIN) / (XMAX - XMIN)) * IW;
+
+        function pdf(x, mu, sd) {
+          const z = (x - mu) / sd;
+          return (1 / (sd * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * z * z);
+        }
+        function path(points) {
+          return points
+            .map(
+              (p, i) =>
+                (i ? "L" : "M") + p[0].toFixed(2) + "," + p[1].toFixed(2)
+            )
+            .join(" ");
+        }
+        const ns = (t) =>
+          document.createElementNS("http://www.w3.org/2000/svg", t);
+        const line = (x1, y1, x2, y2) => {
+          const l = ns("line");
+          l.setAttribute("x1", x1);
+          l.setAttribute("y1", y1);
+          l.setAttribute("x2", x2);
+          l.setAttribute("y2", y2);
+          return l;
+        };
+        const text = (x, y, txt) => {
+          const t = ns("text");
+          t.setAttribute("x", x);
+          t.setAttribute("y", y);
+          t.textContent = txt;
+          return t;
+        };
+
+        function drawAxes(yMax) {
+          grid.innerHTML = "";
+          axX.innerHTML = "";
+          axY.innerHTML = "";
+          const y2px = (y) => M.top + IH * (1 - y / yMax);
+          const yTicks = 7;
+          for (let i = 0; i <= yTicks; i++) {
+            const v = (yMax / yTicks) * i,
+              yy = y2px(v);
+            grid.appendChild(line(M.left, yy, M.left + IW, yy));
+            const t = text(M.left - 10, yy + 4, v.toFixed(2));
+            t.setAttribute("text-anchor", "end");
+            t.classList.add("fg2-axis");
+            axY.appendChild(t);
+          }
+          for (let v = Math.ceil(XMIN); v <= Math.floor(XMAX); v++) {
+            const xx = x2px(v);
+            const t = text(xx, M.top + IH + 24, v.toString());
+            t.setAttribute("text-anchor", "middle");
+            t.classList.add("fg2-axis");
+            axX.appendChild(t);
+          }
+        }
+
+        function draw() {
+          // keep a <= b
+          if (parseFloat(aSl.value) > parseFloat(bSl.value)) {
+            const tmp = aSl.value;
+            aSl.value = bSl.value;
+            bSl.value = tmp;
+          }
+
+          const m0 = parseFloat(mu0.value),
+            sd0 = parseFloat(s0.value);
+          const m1 = parseFloat(mu1.value),
+            sd1 = parseFloat(s1.value);
+          const a = parseFloat(aSl.value),
+            b = parseFloat(bSl.value);
+
+          const y0 = xs.map((x) => pdf(x, m0, sd0));
+          const y1 = xs.map((x) => pdf(x, m1, sd1));
+          const ymax = Math.max(0.35, ...y0, ...y1) * 1.05;
+          const y2px = (y) => M.top + IH * (1 - y / ymax);
+
+          drawAxes(ymax);
+
+          // curves
+          const pts0 = xs.map((x, i) => [x2px(x), y2px(y0[i])]);
+          const pts1 = xs.map((x, i) => [x2px(x), y2px(y1[i])]);
+          p0.setAttribute("d", path(pts0));
+          p1.setAttribute("d", path(pts1));
+
+          // dashed window lines
+          const ax = x2px(a),
+            bx = x2px(b);
+          [
+            [cutA, ax],
+            [cutB, bx],
+          ].forEach(([el, x]) => {
+            el.setAttribute("x1", x);
+            el.setAttribute("x2", x);
+          });
+
+          // shaded area: min(y0,y1) inside [a,b]
+          winG.innerHTML = "";
+          const top = xs
+            .filter((x) => x >= a && x <= b)
+            .map((x, idx) => {
+              const i = xs.indexOf(x);
+              return [x2px(x), y2px(Math.min(y0[i], y1[i]))];
+            });
+          if (top.length) {
+            const base = [
+              [x2px(b), y2px(0)],
+              [x2px(a), y2px(0)],
+            ];
+            const poly = ns("path");
+            const d =
+              path(top) +
+              " L " +
+              base
+                .map((p) => p[0].toFixed(2) + "," + p[1].toFixed(2))
+                .join(" L ") +
+              " Z";
+            poly.setAttribute("d", d);
+            poly.setAttribute("class", "fg2-window");
+            winG.appendChild(poly);
+          }
+        }
+
+        [mu0, s0, mu1, s1, aSl, bSl].forEach((el) =>
+          el.addEventListener("input", draw)
+        );
+        draw();
+      })();
+
+      /* ===== frequency graph (interactive) ===== */
+      (() => {
+        // ----- DOM
+        const svg = document.getElementById("faSvg");
+        const grid = svg.querySelector(".fa-grid");
+        const axX = svg.querySelector(".fa-axis-x");
+        const axY = svg.querySelector(".fa-axis-y");
+        const areasG = document.getElementById("faAreas");
+        const hit = document.getElementById("faHit");
+        const xLine = document.getElementById("faX");
+        const tip = document.getElementById("faTip");
+        const wrap = document.getElementById("faWrap");
+        const stackedChk = document.getElementById("faStacked");
+        const legend = document.getElementById("faLegend");
+
+        // ----- Geometry
+        const W = 960,
+          H = 360,
+          M = { top: 20, right: 30, bottom: 50, left: 70 };
+        const IW = W - M.left - M.right,
+          IH = 260; // height of plot area (matches rect)
+        const Y0 = M.top + IH; // baseline px
+        const YEAR_MIN = 1980,
+          YEAR_MAX = 2022;
+
+        const x2px = (y) =>
+          M.left + ((y - YEAR_MIN) / (YEAR_MAX - YEAR_MIN)) * IW;
+
+        // ----- Colors (match screenshot vibe)
+        const palette = {
+          set: "#34d399", // green
+          seq: "#eab308", // amber
+          vec: "#818cf8", // indigo
+          e2e: "#f472b6", // pink
+        };
+
+        // ----- Sample data (deterministic, sparse earlier, denser later)
+        // Structure: [{year, set, seq, vec, e2e}, ...]
+        const years = Array.from(
+          { length: YEAR_MAX - YEAR_MIN + 1 },
+          (_, i) => YEAR_MIN + i
+        );
+        function bumpRand(seed) {
+          // tiny PRNG
+          seed = (seed * 1664525 + 1013904223) % 4294967296;
+          return seed / 4294967296;
+        }
+        let seed = 7;
+        const data = years
+          .map((y) => {
+            // low activity early; rising after 2008; spike around 2018-2020
+            const t = (y - 2008) / 8;
+            const base = Math.max(0, t) + (y >= 2016 && y <= 2020 ? 3.5 : 0);
+            const r = () => {
+              seed = bumpRand(seed);
+              return seed;
+            };
+            return {
+              year: y,
+              set:
+                y > 2001
+                  ? Math.max(0, base * 0.9 + (r() - 0.5) * 1.0)
+                  : y > 1999
+                  ? r() < 0.25
+                    ? 1
+                    : 0
+                  : 0,
+              seq:
+                y > 1993
+                  ? Math.max(0, base * 0.7 + (r() - 0.5) * 1.0)
+                  : r() < 0.1
+                  ? 1
+                  : 0,
+              vec:
+                y > 1988
+                  ? Math.max(0, base * 0.8 + (r() - 0.5) * 1.1)
+                  : r() < 0.05
+                  ? 1
+                  : 0,
+              e2e: y > 2008 ? Math.max(0, base * 1.2 + (r() - 0.5) * 1.2) : 0,
+            };
+          })
+          .map((d) => ({
+            ...d,
+            // round to integer frequency
+            set: Math.round(d.set),
+            seq: Math.round(d.seq),
+            vec: Math.round(d.vec),
+            e2e: Math.round(d.e2e),
+          }));
+
+        const series = [
+          { key: "set", label: "Set model", color: palette.set, enabled: true },
+          {
+            key: "seq",
+            label: "Sequence model",
+            color: palette.seq,
+            enabled: true,
+          },
+          {
+            key: "vec",
+            label: "Vector model",
+            color: palette.vec,
+            enabled: true,
+          },
+          {
+            key: "e2e",
+            label: "End-to-end",
+            color: palette.e2e,
+            enabled: true,
+          },
+        ];
+
+        // ----- Helpers
+        const ns = (t) =>
+          document.createElementNS("http://www.w3.org/2000/svg", t);
+        const line = (x1, y1, x2, y2) => {
+          const l = ns("line");
+          l.setAttribute("x1", x1);
+          l.setAttribute("y1", y1);
+          l.setAttribute("x2", x2);
+          l.setAttribute("y2", y2);
+          return l;
+        };
+        const text = (x, y, txt) => {
+          const t = ns("text");
+          t.setAttribute("x", x);
+          t.setAttribute("y", y);
+          t.textContent = txt;
+          return t;
+        };
+        const areaPath = (X, Y0px, Ypx) => {
+          // X: px array, Ypx: array (top edge)
+          let d = "M" + X[0] + "," + Y0px + " L" + X[0] + "," + Ypx[0];
+          for (let i = 1; i < X.length; i++) d += " L" + X[i] + "," + Ypx[i];
+          d += " L" + X[X.length - 1] + "," + Y0px + " Z";
+          return d;
+        };
+
+        function computeYMax(stacked) {
+          if (stacked) {
+            let max = 0;
+            for (const row of data) {
+              const sum = series
+                .filter((s) => s.enabled)
+                .reduce((acc, s) => acc + row[s.key], 0);
+              if (sum > max) max = sum;
+            }
+            return Math.max(10, max + 1);
+          } else {
+            let max = 0;
+            for (const s of series.filter((s) => s.enabled)) {
+              for (const row of data) max = Math.max(max, row[s.key]);
+            }
+            return Math.max(10, max + 1);
+          }
+        }
+
+        function drawAxes(yMax) {
+          grid.innerHTML = "";
+          axX.innerHTML = "";
+          axY.innerHTML = "";
+          // grid
+          const yTicks = 5;
+          for (let i = 0; i <= yTicks; i++) {
+            const v = (yMax / yTicks) * i;
+            const yy = M.top + IH * (1 - v / yMax);
+            grid.appendChild(line(M.left, yy, M.left + IW, yy));
+            const t = text(M.left - 10, yy + 4, v.toFixed(0));
+            t.setAttribute("text-anchor", "end");
+            t.classList.add("fa-axis");
+            axY.appendChild(t);
+          }
+          // x ticks every 5 years
+          for (let y = 1980; y <= 2022; y += 5) {
+            const xx = x2px(y);
+            const t = text(xx, Y0 + 24, y.toString());
+            t.setAttribute("text-anchor", "middle");
+            t.classList.add("fa-axis");
+            axX.appendChild(t);
+          }
+        }
+
+        function draw() {
+          const stacked = stackedChk.checked;
+          const yMax = computeYMax(stacked);
+          const y2px = (v) => M.top + IH * (1 - v / yMax);
+
+          drawAxes(yMax);
+          areasG.innerHTML = "";
+
+          const enabled = series.filter((s) => s.enabled);
+          if (enabled.length === 0) return;
+
+          // X screen coords
+          const X = data.map((d) => x2px(d.year));
+
+          if (stacked) {
+            // cumulative baseline for stacking
+            const base = Array(data.length).fill(0);
+            for (const s of enabled) {
+              const vals = data.map((d) => d[s.key]);
+              const top = vals.map((v, i) => base[i] + v);
+              const topPx = top.map(y2px);
+              const basePx = base.map(y2px);
+              const path = ns("path");
+              path.setAttribute("d", areaPath(X, Y0, topPx)); // area to baseline Y0, but draw with translated baseline
+              // To truly stack visually (without reuse baseline path), we convert area between base and top by
+              // filling top and then "cutting" with clip – simpler: draw path from basePx to topPx
+              let d = "M" + X[0] + "," + basePx[0];
+              for (let i = 1; i < X.length; i++)
+                d += " L" + X[i] + "," + basePx[i];
+              for (let i = X.length - 1; i >= 0; i--)
+                d += " L" + X[i] + "," + topPx[i];
+              d += " Z";
+              path.setAttribute("d", d);
+              path.setAttribute("class", "fa-area");
+              path.setAttribute("fill", s.color);
+              areasG.appendChild(path);
+              // update baseline
+              for (let i = 0; i < base.length; i++) base[i] = top[i];
+            }
+          } else {
+            // overlapping areas all to zero line
+            for (const s of enabled) {
+              const vals = data.map((d) => d[s.key]);
+              const topPx = vals.map(y2px);
+              const path = ns("path");
+              path.setAttribute("d", areaPath(X, Y0, topPx));
+              path.setAttribute("class", "fa-area");
+              path.setAttribute("fill", s.color);
+              areasG.appendChild(path);
+            }
+          }
+        }
+
+        // ----- Legend
+        function renderLegend() {
+          legend.innerHTML = "";
+          series.forEach((s) => {
+            const b = document.createElement("button");
+            b.className = "fa-chip" + (s.enabled ? "" : " off");
+            b.setAttribute("type", "button");
+            b.setAttribute("aria-pressed", String(s.enabled));
+            b.innerHTML = `<span class="fa-swatch" style="background:${s.color}"></span>${s.label}`;
+            b.addEventListener("click", () => {
+              s.enabled = !s.enabled;
+              b.classList.toggle("off", !s.enabled);
+              b.setAttribute("aria-pressed", String(s.enabled));
+              draw();
+            });
+            b.addEventListener("keydown", (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                b.click();
+              }
+            });
+            legend.appendChild(b);
+          });
+        }
+
+        // ----- Hover interaction
+        function nearestYear(px) {
+          // convert mouse px to year and snap to nearest data index
+          const frac = (px - M.left) / IW;
+          const year = YEAR_MIN + frac * (YEAR_MAX - YEAR_MIN);
+          let iClosest = 0,
+            dBest = Infinity;
+          for (let i = 0; i < data.length; i++) {
+            const dx = Math.abs(data[i].year - year);
+            if (dx < dBest) {
+              dBest = dx;
+              iClosest = i;
+            }
+          }
+          return iClosest;
+        }
+        function showTip(evt) {
+          const r = svg.getBoundingClientRect();
+          const cx = (evt.clientX ?? r.left + r.width / 2) - r.left;
+          const cy = (evt.clientY ?? r.top + r.height / 2) - r.top;
+          const i = nearestYear(cx);
+          const rec = data[i];
+          const xpx = x2px(rec.year);
+
+          xLine.setAttribute("x1", xpx);
+          xLine.setAttribute("x2", xpx);
+          const enabled = series.filter((s) => s.enabled);
+          const lines = enabled
+            .map((s) => `${s.label}: ${rec[s.key]}`)
+            .join("\n");
+          tip.textContent = `${rec.year}\n${lines}`;
+          const bw = wrap.getBoundingClientRect();
+          tip.style.left = Math.min(Math.max(12, cx), bw.width - 12) + "px";
+          tip.style.top = Math.max(12, cy - 24) + "px";
+          tip.classList.add("show");
+        }
+        function hideTip() {
+          tip.classList.remove("show");
+          xLine.setAttribute("x1", "-999");
+          xLine.setAttribute("x2", "-999");
+        }
+
+        hit.addEventListener("pointerenter", showTip);
+        hit.addEventListener("pointermove", showTip);
+        hit.addEventListener("pointerleave", hideTip);
+
+        stackedChk.addEventListener("change", draw);
+
+        // init
+        renderLegend();
+        draw();
+      })();
+    </script>
+
+    <!-- add animation when moving from one chart to another -->
+    <script>
+      document.addEventListener("scroll", () => {
+        document.querySelectorAll(".card").forEach((c) => {
+          const rect = c.getBoundingClientRect();
+          if (rect.top < window.innerHeight * 0.8) c.classList.add("visible");
+        });
+      });
+    </script>
+
+    <!-- FOURTH ASSIGNMENT -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script>
+    // ---------------------
+    // RAW DATA
+    // ---------------------
+    const approaches = ["ERM","DA","PGDT","TRADES","MART","RS","IBP","PRL","TandT"];
+    const datasets   = ["CIFAR-100","CIFAR-10","SVHN","MNIST"];
+    const metricGroups = [
+    "Standard Accuracy",
+    "Certified Robustness Rate",
+    "Certified Robust Accuracy"
+    ];
+
+    // Per-metric matrices (rows = approach, cols = dataset)
+    const standardAccuracy = [
+    [81.03, 94.85, 94.44, 99.37],
+    [78.27, 94.21, 94.69, 99.42],
+    [64.35, 84.38, 91.19, 99.16],
+    [62.55, 80.42, 86.16, 99.10],
+    [63.68, 81.54, 90.20, 98.94],
+    [56.87, 89.45, 88.35, 97.16],
+    [39.45, 48.40, 73.09, 97.78],
+    [64.89, 93.82, 92.00, 99.32],
+    [65.56, 94.23, 94.79, 99.32]
+    ];
+
+    const certifiedRate = [
+    [9.28, 1.25, 52.72, 26.01],
+    [15.04, 81.08, 82.08, 85.23],
+    [57.07, 87.07, 87.89, 94.65],
+    [59.27, 88.54, 87.89, 94.76],
+    [58.79, 78.90, 85.23, 94.13],
+    [60.38, 90.00, 76.29, 87.15],
+    [49.34, 54.70, 61.94, 89.18],
+    [56.71, 90.71, 93.11, 96.03],
+    [62.05, 95.08, 93.15, 97.80]
+    ];
+
+    const certifiedAcc = [
+    [4.52, 1.25, 51.04, 24.96],
+    [6.15, 76.07, 82.01, 84.12],
+    [32.93, 82.90, 86.68, 94.63],
+    [38.85, 78.80, 84.76, 94.61],
+    [49.37, 72.21, 78.82, 94.09],
+    [47.50, 87.98, 70.64, 86.29],
+    [29.20, 40.00, 57.26, 88.51],
+    [50.77, 90.63, 91.07, 95.01],
+    [52.07, 91.75, 92.81, 96.80]
+    ];
+
+    // Helper to get all metric values for a single approach
+    function getApproachData(i) {
+    return [
+        { metric: "Standard Accuracy",         values: standardAccuracy[i] },
+        { metric: "Certified Robustness Rate", values: certifiedRate[i] },
+        { metric: "Certified Robust Accuracy", values: certifiedAcc[i] }
+    ];
+    }
+
+    // ---------------------
+    // GLOBAL SETTINGS
+    // ---------------------
+    const margin = {top: 30, right: 10, bottom: 50, left: 40};
+    const chartW = 260;   // inner width per small multiple
+    const chartH = 180;   // inner height per small multiple
+    const cols   = 3;     // charts per row
+
+    const width  = cols * (chartW + margin.left + margin.right);
+    const rows   = Math.ceil(approaches.length / cols);
+    const height = rows * (chartH + margin.top + margin.bottom) + 60; // extra for legend
+
+    const svg = d3.select("#smalls")
+    .append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+    // Global y-scale for comparability
+    const y = d3.scaleLinear()
+    .domain([0, 100])
+    .nice()
+    .range([chartH, 0]);
+
+    const color = d3.scaleOrdinal()
+    .domain(datasets)
+    .range(d3.schemeTableau10);
+
+    // ---------------------
+    // TOOLTIP
+    // ---------------------
+    const tooltip = d3.select("body")
+    .append("div")
+    .style("position", "absolute")
+    .style("padding", "6px 10px")
+    .style("background", "white")
+    .style("border", "1px solid #ccc")
+    .style("border-radius", "4px")
+    .style("pointer-events", "none")
+    .style("font-size", "12px")
+    .style("color", "#000")
+    .style("font-weight", "bold")
+    .style("opacity", 0);
+
+    // ---------------------
+    // LEGEND (datasets)
+    // ---------------------
+    const legend = svg.append("g")
+    .attr("transform", `translate(10, 10)`);
+    legend.style("color", "#000").style("font-weight", "bold");
+
+    datasets.forEach((ds, i) => {
+    const g = legend.append("g").attr("transform", `translate(${i*120}, 0)`);
+    g.append("rect")
+        .attr("width", 12)
+        .attr("height", 12)
+        .attr("fill", color(ds));
+    g.append("text")
+        .attr("x", 18)
+        .attr("y", 10)
+        .style("font-size", "11px")
+        .text(ds);
+    });
+
+    // ---------------------
+    // DRAW EACH SMALL MULTIPLE
+    // ---------------------
+    approaches.forEach((ap, index) => {
+    const row = Math.floor(index / cols);
+    const col = index % cols;
+
+    const group = svg.append("g")
+        .attr("transform",
+            `translate(${col*(chartW + margin.left + margin.right) + margin.left},
+                        ${row*(chartH + margin.top + margin.bottom) + margin.top + 40})`);
+
+    const x0 = d3.scaleBand()
+        .domain(metricGroups)
+        .range([0, chartW])
+        .padding(0.2);
+
+    const x1 = d3.scaleBand()
+        .domain(datasets)
+        .range([0, x0.bandwidth()])
+        .padding(0.05);
+
+    // Axes
+    group.append("g")
+        .attr("transform", `translate(0,${chartH})`)
+        .call(d3.axisBottom(x0).tickFormat(d => {
+        if (d === "Standard Accuracy") return "Std Acc";
+        if (d === "Certified Robustness Rate") return "Cert Rate";
+        if (d === "Certified Robust Accuracy") return "Cert Acc";
+        return d;
+        }))
+        .selectAll("text")
+        .style("font-size", "10px")
+        .style("color", "#000")
+        .style("font-weight", "bold");
+
+
+    group.append("g")
+        .call(d3.axisLeft(y).ticks(4))
+        .selectAll("text")
+        .style("font-size", "10px")
+        .style("color", "#000")
+        .style("font-weight", "bold");
+
+    // Approach title
+    group.append("text")
+        .attr("x", chartW / 2)
+        .attr("y", -8)
+        .attr("text-anchor", "middle")
+        .style("font-weight", "bold")
+        .style("font-size", "12px")
+        .text(ap);
+
+    const apData = getApproachData(index);
+
+    // Bars with animation from bottom (grow + fade-in) + tooltip
+    const bars = group.selectAll("g.metricGroup")
+        .data(apData)
+        .enter()
+        .append("g")
+        .attr("class", "metricGroup")
+        .attr("transform", d => `translate(${x0(d.metric)},0)`);
+
+    const rects = bars.selectAll("rect")
+        .data(d => datasets.map((ds, i) => ({
+            approach: ap,
+            metric  : d.metric,
+            dataset : ds,
+            value   : d.values[i]
+        })))
+        .enter()
+        .append("rect")
+        .attr("x", d => x1(d.dataset))
+        .attr("width", x1.bandwidth())
+        // start from bottom (height=0), invisible
+        .attr("y", y(0))
+        .attr("height", chartH - y(0))
+        .attr("fill", d => color(d.dataset))
+        .attr("opacity", 0);
+
+    // Tooltip handlers + transition
+    rects
+        .on("mouseover", (event, d) => {
+        tooltip
+            .style("opacity", 1)
+            .html(
+            `<strong>${d.approach}</strong><br/>
+            ${d.metric}<br/>
+            ${d.dataset}<br/>
+            Value: ${d.value.toFixed(2)}`
+            );
+        })
+        .on("mousemove", (event) => {
+        tooltip
+            .style("left", (event.pageX + 10) + "px")
+            .style("top",  (event.pageY - 20) + "px");
+        })
+        .on("mouseout", () => {
+        tooltip.style("opacity", 0);
+        })
+        .transition()
+        .duration(800)
+        .delay((d, i) => 80 * i)   // small stagger within each chart
+        .attr("y", d => y(d.value))
+        .attr("height", d => chartH - y(d.value))
+        .attr("opacity", 1);
+
+    });
+    </script>
+  </body>
+</html>
